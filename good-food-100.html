@@ -89,16 +89,60 @@ select { height: 32px; border-radius: 8px; border: 1px solid var(--line); backgr
 #list .been { opacity: .5; }
 .empty { padding: 24px 14px; color: var(--muted); }
 #grab { display: none; }
+#card, #fsheet { display: none; }
+
+/* Restaurant card (phone) and filter sheet (phone) */
+#card { overflow-y: auto; flex: 1; min-height: 0; padding: 2px 16px 16px; -webkit-overflow-scrolling: touch; }
+#card .card-top { position: relative; padding-bottom: 12px; }
+#card .card-more { border-top: 1px solid var(--line); padding-top: 12px; }
+#card .pp h3 { margin-right: 44px; }
+#card .x { position: absolute; top: 0; right: 0; width: 32px; height: 32px; border-radius: 50%; border: 0; background: var(--chip); font-size: 15px; line-height: 1; }
+#fsheet { flex-direction: column; flex: 1; min-height: 0; }
+.fs-head { display: flex; align-items: center; gap: 8px; padding: 2px 16px 10px; border-bottom: 1px solid var(--line); }
+.fs-head h2 { flex: 1; margin: 0; font-size: 16px; }
+#f-clear { border: 0; background: none; color: var(--accent); font-weight: 600; padding: 6px 4px; }
+#fslot { overflow-y: auto; flex: 1; min-height: 0; padding: 14px 16px; }
+#fslot #filters { gap: 14px; }
+.fs-foot { padding: 10px 16px; border-top: 1px solid var(--line); }
+#f-apply { width: 100%; height: 46px; border: 0; border-radius: 12px; background: var(--chip-on); color: var(--chip-on-fg); font-weight: 700; }
+
+/* Map control icons: icons + text on desktop, icons only on phones */
+.ctl-btns button { display: flex; align-items: center; gap: 7px; }
+.ctl-btns svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.legend .q { display: none; }
 
 @media (max-width: 859px) {
-  #panel { left: 0; right: 0; bottom: 0; border-radius: 16px 16px 0 0; height: 46%; padding-bottom: env(safe-area-inset-bottom, 0px); transition: height .25s ease; }
-  #panel.collapsed { height: calc(56px + env(safe-area-inset-bottom, 0px)); }
-  #grab { display: block; width: 100%; border: 0; background: none; padding: 8px 0 0; }
+  /* Map fills the screen; search and filter button float over it */
+  #app { display: block; }
+  #map { position: absolute; inset: 0; }
+  header {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 1001; background: none; border: 0; pointer-events: none;
+    padding: calc(env(safe-area-inset-top, 0px) + 10px) max(12px, env(safe-area-inset-right, 0px)) 0 max(12px, env(safe-area-inset-left, 0px));
+  }
+  header .bar > * { pointer-events: auto; }
+  .brand { display: none; }
+  #q, #ftoggle { height: 44px; border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); border-color: transparent; }
+  .leaflet-top { top: calc(env(safe-area-inset-top, 0px) + 62px); }
+  .leaflet-control-zoom { display: none; }
+  .ctl-btns button { padding: 10px; }
+  .ctl-btns .t { display: none; }
+  .legend .t { display: none; }
+  .legend .q { display: inline; }
+  .legend summary { width: 18px; text-align: center; }
+  .leaflet-bottom { bottom: var(--sheet-h, 64px); }
+
+  /* Bottom sheet: height set by script (peek / half / full, or card / filters) */
+  .leaflet-control-attribution { font-size: 9.5px; }
+  /* above Leaflet's control layer (z-index 1000) so the full-height sheet covers the map buttons */
+  #panel { z-index: 1001; left: 0; right: 0; bottom: 0; height: var(--sheet-h, 64px); border-radius: 16px 16px 0 0; padding-bottom: env(safe-area-inset-bottom, 0px); overflow: hidden; transition: height .25s ease; }
+  #panel.dragging { transition: none; }
+  #grab { display: block; flex: none; width: 100%; border: 0; background: none; padding: 9px 0 7px; touch-action: none; cursor: grab; }
   #grab::before { content: ""; display: block; width: 38px; height: 4px; border-radius: 4px; background: var(--line); margin: 0 auto; }
-  .panel-head { padding-top: 4px; }
-  .leaflet-bottom { bottom: 46%; transition: bottom .25s ease; }
-  #map:has(#panel.collapsed) .leaflet-bottom { bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
-  .brand small { display: none; }
+  .panel-head { padding-top: 0; touch-action: none; }
+  #panel[data-mode="card"] #card { display: block; }
+  #panel[data-mode="filters"] #fsheet { display: flex; }
+  #panel:not([data-mode="list"]) .panel-head, #panel:not([data-mode="list"]) #list { display: none; }
+  #card .card-top { touch-action: pan-x; }
 }
 @media (min-width: 860px) {
   #panel { top: 12px; left: max(12px, env(safe-area-inset-left, 0px)); bottom: 12px; width: 340px; border-radius: 14px; overflow: hidden; }
@@ -166,9 +210,9 @@ select { height: 32px; border-radius: 8px; border: 1px solid var(--line); backgr
     </div>
   </header>
   <div id="map">
-    <section id="panel" aria-label="Restaurant list">
-      <button id="grab" aria-label="Expand or collapse list"></button>
-      <div class="panel-head">
+    <section id="panel" aria-label="Restaurant list" data-mode="list">
+      <button id="grab" type="button" aria-label="Resize panel"></button>
+      <div class="panel-head" id="list-head">
         <h2>Restaurants <span id="shown"></span></h2>
         <div class="seg" role="group" aria-label="Sort">
           <button id="s-rating" aria-pressed="true">Rating</button>
@@ -176,6 +220,12 @@ select { height: 32px; border-radius: 8px; border: 1px solid var(--line); backgr
         </div>
       </div>
       <ul id="list"></ul>
+      <div id="card" aria-live="polite"></div>
+      <div id="fsheet">
+        <div class="fs-head"><h2>Filters</h2><button type="button" id="f-clear">Clear all</button></div>
+        <div id="fslot"></div>
+        <div class="fs-foot"><button type="button" id="f-apply">Show restaurants</button></div>
+      </div>
     </section>
   </div>
 </div>
@@ -253,8 +303,7 @@ const byId = new Map();
 for (const r of DATA) {
   if (r.lat == null) continue;
   const m = L.marker([r.lat, r.lon], { icon: iconFor(r), title: r.name, riseOnHover: true });
-  m.bindPopup(() => popupHtml(r), { maxWidth: 320, autoPanPaddingTopLeft: [20, 80] });
-  m.on("popupopen", e => wirePopup(e.popup, r));
+  m.on("click", () => narrow() ? openCard(r) : openPopup(r));
   byId.set(r.id, { r, m });
 }
 function refreshIcon(id) { const o = byId.get(id); if (o) o.m.setIcon(iconFor(o.r)); }
@@ -264,7 +313,7 @@ const SYD = L.latLngBounds([-34.12, 150.85], [-33.70, 151.32]);
 // keep fitted views clear of the side panel (wide) or bottom sheet (phone)
 const fitPad = () => matchMedia("(min-width: 860px)").matches
   ? { paddingTopLeft: [370, 30], paddingBottomRight: [30, 30] }
-  : { paddingTopLeft: [20, 20], paddingBottomRight: [20, Math.round(innerHeight * 0.4)] };
+  : { paddingTopLeft: [20, hdrBottom()], paddingBottomRight: [20, sheetPx() + 12] };
 function showSydney() { map.fitBounds(SYD, fitPad()); }
 function showAll() {
   const pts = [...byId.values()].map(o => o.m.getLatLng());
@@ -275,7 +324,11 @@ showSydney();
 const Ctl = L.Control.extend({
   onAdd() {
     const d = L.DomUtil.create("div", "ctl ctl-btns");
-    d.innerHTML = '<button type="button" id="b-all">Show all 100</button><button type="button" id="b-syd">Sydney</button><button type="button" id="b-me">Near me</button>';
+    const ic = p => '<svg viewBox="0 0 24 24" aria-hidden="true">' + p + "</svg>";
+    d.innerHTML =
+      '<button type="button" id="b-all" aria-label="Show all 100" title="Show all 100">' + ic('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>') + '<span class="t">Show all 100</span></button>' +
+      '<button type="button" id="b-syd" aria-label="Sydney" title="Sydney">' + ic('<path d="M12 21s-6-5.5-6-10a6 6 0 0 1 12 0c0 4.5-6 10-6 10z"/><circle cx="12" cy="11" r="2"/>') + '<span class="t">Sydney</span></button>' +
+      '<button type="button" id="b-me" aria-label="Near me" title="Near me">' + ic('<path d="M3 11l18-8-8 18-2-8z"/>') + '<span class="t">Near me</span></button>';
     L.DomEvent.disableClickPropagation(d);
     return d;
   }
@@ -287,7 +340,7 @@ const Legend = L.Control.extend({
     const d = L.DomUtil.create("details", "ctl legend");
     const swatch = (v, label) => '<span class="it"><span class="chip sw" style="background:var(' + v + ')"></span>' + label + "</span>";
     const shapes = labels => labels.map((l, i) => '<span class="it">' + legendShape(i) + l + "</span>").join("");
-    d.innerHTML = '<summary>Legend</summary>' + (MODE === "v2"
+    d.innerHTML = '<summary aria-label="Legend"><span class="t">Legend</span><span class="q" aria-hidden="true">?</span></summary>' + (MODE === "v2"
       ? '<div class="hd">Shape · hats</div><div class="lr">' + shapes(["0", "1", "2", "3"]) + "</div>" +
         '<div class="hd">Colour · price</div><div class="lr">' + PRICES.map((p, i) => swatch("--pr" + i, p)).join("") + "</div>"
       : '<div class="hd">Colour · hats</div><div class="lr">' + [0, 1, 2, 3].map(h => swatch("--hat" + h, h)).join("") + "</div>" +
@@ -328,8 +381,38 @@ function popupHtml(r) {
     '<button type="button" data-k="been" aria-pressed="' + !!m.been + '">✓ Been</button>' +
     "</div></div>";
 }
-function wirePopup(popup, r) {
-  popup.getElement().querySelectorAll("[data-k]").forEach(b => b.addEventListener("click", () => {
+// desktop: floating popup over the map
+function openPopup(r) {
+  const o = byId.get(r.id), pin = encode(r).shape < 0;
+  const p = L.popup({ maxWidth: 320, autoPanPaddingTopLeft: [20, 80], offset: [0, pin ? -26 : -12] })
+    .setLatLng(o.m.getLatLng()).setContent(popupHtml(r)).openOn(map);
+  wireMarks(p.getElement(), r);
+}
+// phone: card in the bottom sheet; summary on top, details below the fold
+function cardHtml(r) {
+  const m = mk(r.id);
+  const gtk = r.tip ? (r.tipLabel ? "<b>" + esc(r.tipLabel) + ":</b> " : "<b>Good to know:</b> ") + esc(r.tip) : "";
+  const dest = encodeURIComponent(r.name + ", " + (r.address || ""));
+  return '<div class="pp"><div class="card-top">' +
+    '<button type="button" class="x" aria-label="Close">✕</button>' +
+    (r.award ? '<div class="award">' + esc(r.award) + "</div>" : "") +
+    "<h3>" + esc(r.name) + "</h3>" +
+    '<div class="stats">' + (r.score != null ? '<span class="score">' + r.score + "/20</span>" : "") +
+    "<span>" + esc(HAT_NAMES[r.hats]) + "</span>" + (r.price ? "<span>" + r.price + "</span>" : "") +
+    (r.category ? "<span>" + esc(r.category) + "</span>" : "") + "</div>" +
+    (r.headline ? '<p class="hl">' + esc(r.headline) + "</p>" : "") +
+    '<div class="acts">' +
+    '<a href="https://www.google.com/maps/dir/?api=1&destination=' + dest + '" target="_blank" rel="noopener">Directions</a>' +
+    (r.website ? '<a href="' + esc(r.website) + '" target="_blank" rel="noopener">Website</a>' : "") +
+    '<button type="button" data-k="want" aria-pressed="' + !!m.want + '">★ Want to go</button>' +
+    '<button type="button" data-k="been" aria-pressed="' + !!m.been + '">✓ Been</button>' +
+    "</div></div>" +
+    '<div class="card-more">' + (gtk ? '<p class="gtk">' + gtk + "</p>" : "") +
+    '<p class="addr">' + esc(r.address || "") + "</p>" +
+    (r.approx ? '<p class="approx">Pin position is approximate.</p>' : "") + "</div></div>";
+}
+function wireMarks(root, r) {
+  root.querySelectorAll("[data-k]").forEach(b => b.addEventListener("click", () => {
     const k = b.dataset.k, cur = { ...mk(r.id) };
     cur[k] = !cur[k];
     if (!cur.want && !cur.been) delete marks[r.id]; else marks[r.id] = cur;
@@ -367,7 +450,18 @@ Object.keys(cats).sort().forEach(c => { const o = document.createElement("option
 sel.addEventListener("change", () => { st.cat = sel.value; render(true); });
 document.getElementById("q").addEventListener("input", e => { st.q = e.target.value.trim().toLowerCase(); render(true); });
 const ft = document.getElementById("ftoggle"), fbox = document.getElementById("filters");
-ft.addEventListener("click", () => { fbox.hidden = !fbox.hidden; ft.setAttribute("aria-expanded", String(!fbox.hidden)); setTimeout(() => map.invalidateSize(), 50); });
+ft.addEventListener("click", () => {
+  if (narrow()) { sheet.mode === "filters" ? closeFilters() : openFilters(); return; }
+  fbox.hidden = !fbox.hidden; ft.setAttribute("aria-expanded", String(!fbox.hidden)); setTimeout(() => map.invalidateSize(), 50);
+});
+function clearFilters() {
+  st.hats.clear(); st.price.clear(); st.cat = ""; st.mark = "";
+  fbox.querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed", "false"));
+  sel.value = "";
+  render(false);
+}
+document.getElementById("f-clear").addEventListener("click", clearFilters);
+document.getElementById("f-apply").addEventListener("click", () => closeFilters());
 
 /* ---------- sorting / location ---------- */
 const sR = document.getElementById("s-rating"), sN = document.getElementById("s-near");
@@ -386,16 +480,147 @@ function locate(then) {
 function alertSoft(msg) { const l = document.getElementById("list"); l.insertAdjacentHTML("afterbegin", '<li class="empty">' + esc(msg) + "</li>"); }
 sN.addEventListener("click", () => st.here ? setSort("near") : locate(() => setSort("near")));
 document.addEventListener("click", e => {
-  if (e.target.id === "b-all") showAll();
-  if (e.target.id === "b-syd") showSydney();
-  if (e.target.id === "b-me") locate(() => { map.setView(st.here, 14); setSort("near"); });
+  const id = e.target.closest("button")?.id;
+  if (id === "b-all") showAll();
+  if (id === "b-syd") showSydney();
+  if (id === "b-me") locate(() => { map.setView(st.here, 14); setSort("near"); });
 });
 
-/* ---------- panel (phone bottom sheet) ---------- */
+/* ---------- panel: side panel on desktop, bottom sheet on phones ---------- */
+function narrow() { return matchMedia("(max-width: 859px)").matches; }  // hoisted: fitPad() runs before this point
 const panel = document.getElementById("panel");
+const grab = document.getElementById("grab"), listHead = document.getElementById("list-head");
+const cardEl = document.getElementById("card"), fslot = document.getElementById("fslot");
 L.DomEvent.disableClickPropagation(panel); L.DomEvent.disableScrollPropagation(panel);
-document.getElementById("grab").addEventListener("click", () => panel.classList.toggle("collapsed"));
-const narrow = () => matchMedia("(max-width: 859px)").matches;
+
+// mode: list | card | filters. listState: peek | half | full. cardState: compact | expanded.
+const sheet = { mode: "list", listState: "peek", cardState: "compact", returnTo: "peek", card: null };
+function hdrBottom() { return Math.round(document.querySelector("header").getBoundingClientRect().bottom) + 8; }
+function sheetPx() { return narrow() ? Math.round(document.getElementById("panel").getBoundingClientRect().height) : 0; }
+function snaps() {
+  const H = document.getElementById("map").clientHeight;
+  const safeB = parseFloat(getComputedStyle(panel).paddingBottom) || 0;
+  const full = H - hdrBottom(), g = grab.offsetHeight + safeB;
+  if (sheet.mode === "card") {
+    const top = cardEl.querySelector(".card-top");
+    const compact = Math.min(g + (top ? top.offsetHeight : 160) + 4, full);
+    return { compact, expanded: Math.max(compact, Math.min(g + cardEl.scrollHeight + 4, full)) };
+  }
+  if (sheet.mode === "filters") return { full };
+  return { peek: g + listHead.offsetHeight, half: Math.round(H * 0.5), full };
+}
+const stateKey = () => sheet.mode === "card" ? sheet.cardState : sheet.mode === "filters" ? "full" : sheet.listState;
+function setHeight(px) {
+  panel.style.height = px + "px";
+  document.documentElement.style.setProperty("--sheet-h", px + "px");
+}
+function applySheet() {
+  if (!narrow()) return;
+  panel.dataset.mode = sheet.mode;
+  requestAnimationFrame(() => { setHeight(snaps()[stateKey()]); renderList(); });
+}
+
+// Drag the sheet by its handle or list header; a tap on the handle steps through the heights
+let drag = null;
+panel.addEventListener("pointerdown", e => {
+  if (!narrow()) return;
+  const onHandle = e.target === grab || (listHead.contains(e.target) && !e.target.closest("button")) ||
+    (sheet.mode === "card" && e.target.closest(".card-top") && !e.target.closest("a, button"));
+  if (!onHandle) return;
+  drag = { onGrab: e.target === grab, y0: e.clientY, h0: panel.getBoundingClientRect().height, t0: e.timeStamp, y: e.clientY, t: e.timeStamp, moved: false, id: e.pointerId };
+  panel.setPointerCapture(e.pointerId);
+});
+panel.addEventListener("pointermove", e => {
+  if (!drag || e.pointerId !== drag.id) return;
+  const dy = e.clientY - drag.y0;
+  if (!drag.moved && Math.abs(dy) < 6) return;
+  drag.moved = true; panel.classList.add("dragging");
+  drag.v = (e.clientY - drag.y) / Math.max(1, e.timeStamp - drag.t); drag.y = e.clientY; drag.t = e.timeStamp;
+  const full = document.getElementById("map").clientHeight - hdrBottom();
+  setHeight(Math.max(40, Math.min(full, drag.h0 - dy)));
+});
+function endDrag(e) {
+  if (!drag || e.pointerId !== drag.id) return;
+  const d = drag; drag = null;
+  panel.classList.remove("dragging");
+  if (!d.moved) { if (d.onGrab) stepSheet(); return; }
+  const h = panel.getBoundingClientRect().height - (d.v || 0) * 180;  // project a flick forward
+  const s = snaps();
+  if (sheet.mode === "card" && h < s.compact - 50) return closeCard();
+  if (sheet.mode === "filters" && h < s.full * 0.75) return closeFilters();
+  const best = Object.entries(s).sort((a, b) => Math.abs(a[1] - h) - Math.abs(b[1] - h))[0][0];
+  if (sheet.mode === "card") sheet.cardState = best; else if (sheet.mode === "list") sheet.listState = best;
+  applySheet();
+}
+panel.addEventListener("pointerup", endDrag);
+panel.addEventListener("pointercancel", endDrag);
+function stepSheet() {
+  if (sheet.mode === "card") sheet.cardState = sheet.cardState === "compact" ? "expanded" : "compact";
+  else if (sheet.mode === "list") sheet.listState = { peek: "half", half: "full", full: "peek" }[sheet.listState];
+  applySheet();
+}
+
+// Pan so a restaurant sits in the middle of the map area left visible above the sheet
+function focusOn(r, sheetH) {
+  const z = Math.max(map.getZoom(), 15), size = map.getSize();
+  const top = hdrBottom(), wantY = (top + (size.y - sheetH)) / 2;
+  const pt = map.project([r.lat, r.lon], z).add([0, size.y / 2 - wantY]);
+  map.setView(map.unproject(pt, z), z);
+}
+function openCard(r) {
+  if (sheet.mode === "list") sheet.returnTo = sheet.listState;
+  if (sheet.mode === "filters") sheet.returnTo = "half";
+  sheet.mode = "card"; sheet.cardState = "compact"; sheet.card = r;
+  panel.dataset.mode = "card";
+  cardEl.innerHTML = cardHtml(r);
+  cardEl.scrollTop = 0;
+  wireMarks(cardEl, r);
+  cardEl.querySelector(".x").addEventListener("click", closeCard);
+  requestAnimationFrame(() => {
+    const h = snaps().compact;
+    setHeight(h);
+    focusOn(r, h);
+  });
+}
+function closeCard() {
+  if (sheet.mode !== "card") return;
+  sheet.mode = "list"; sheet.listState = sheet.returnTo; sheet.card = null;
+  applySheet();
+}
+function openFilters() {
+  if (sheet.mode === "list") sheet.returnTo = sheet.listState;
+  sheet.mode = "filters"; ft.setAttribute("aria-expanded", "true");
+  applySheet();
+}
+function closeFilters() {
+  sheet.mode = "list"; sheet.listState = "half"; ft.setAttribute("aria-expanded", "false");
+  applySheet();
+  setTimeout(() => refitShown(), 280);
+}
+map.on("click", () => { if (narrow()) closeCard(); });
+map.on("moveend", () => { if (narrow() && sheet.mode === "list") renderList(); });
+document.getElementById("q").addEventListener("focus", () => {
+  if (!narrow()) return;
+  if (sheet.mode !== "list") { sheet.mode = "list"; sheet.listState = "half"; applySheet(); }
+  else if (sheet.listState === "peek") { sheet.listState = "half"; applySheet(); }
+});
+
+// Filters live in the header on desktop and in the sheet on phones
+function placeLayout() {
+  if (narrow()) {
+    if (fbox.parentNode !== fslot) fslot.appendChild(fbox);
+    fbox.hidden = false;
+    applySheet();
+  } else {
+    if (fbox.parentNode !== document.querySelector("header")) document.querySelector("header").appendChild(fbox);
+    fbox.hidden = ft.getAttribute("aria-expanded") !== "true";
+    sheet.mode = "list"; panel.dataset.mode = "list";
+    panel.style.height = ""; document.documentElement.style.removeProperty("--sheet-h");
+    renderList();
+  }
+}
+matchMedia("(max-width: 859px)").addEventListener("change", () => { ft.setAttribute("aria-expanded", "false"); placeLayout(); });
+addEventListener("resize", () => { if (narrow()) applySheet(); });
 
 /* ---------- render ---------- */
 function matches(r) {
@@ -410,14 +635,36 @@ function matches(r) {
   return true;
 }
 function fmtKm(m) { return m < 1000 ? Math.round(m / 10) * 10 + " m" : (m / 1000).toFixed(m < 10000 ? 1 : 0) + " km"; }
+let shown = [];
+// lat/lng box of the map area the user can actually see (between the search bar and the sheet)
+function visibleBounds() {
+  const size = map.getSize();
+  return L.latLngBounds(map.containerPointToLatLng([0, hdrBottom()]), map.containerPointToLatLng([size.x, size.y - sheetPx()]));
+}
 function render(refit) {
-  const shown = DATA.filter(r => r.lat != null && matches(r));
+  shown = DATA.filter(r => r.lat != null && matches(r));
   cluster.clearLayers();
   cluster.addLayers(shown.map(r => byId.get(r.id).m));
   const n = st.hats.size + st.price.size + (st.cat ? 1 : 0) + (st.mark ? 1 : 0);
   const fc = document.getElementById("fcount"); fc.hidden = !n; fc.textContent = n;
-  document.getElementById("shown").textContent = shown.length === DATA.length ? "· all " + shown.length : "· " + shown.length + " of " + DATA.length;
-  const rows = shown.map(r => ({ r, d: st.here ? st.here.distanceTo([r.lat, r.lon]) : null }));
+  document.getElementById("f-apply").textContent = shown.length ? "Show " + shown.length + " restaurant" + (shown.length === 1 ? "" : "s") : "No matches";
+  renderList();
+  if (refit) refitShown();
+}
+function refitShown() {
+  const n = st.hats.size + st.price.size + (st.cat ? 1 : 0) + (st.mark ? 1 : 0);
+  if (shown.length && (st.q || n) && !(narrow() && sheet.mode === "filters"))
+    map.fitBounds(L.latLngBounds(shown.map(r => [r.lat, r.lon])), { ...fitPad(), maxZoom: 15 });
+}
+function renderList() {
+  // phones: at peek/half the list follows the map; at full height it lists every match
+  const inView = narrow() && sheet.mode === "list" && sheet.listState !== "full";
+  const vb = inView ? visibleBounds() : null;
+  const pool = inView ? shown.filter(r => vb.contains([r.lat, r.lon])) : shown;
+  document.getElementById("shown").textContent = inView
+    ? "· " + pool.length + " in view"
+    : shown.length === DATA.length ? "· all " + shown.length : "· " + shown.length + " of " + DATA.length;
+  const rows = pool.map(r => ({ r, d: st.here ? st.here.distanceTo([r.lat, r.lon]) : null }));
   if (st.sort === "near" && st.here) rows.sort((a, b) => a.d - b.d);
   else rows.sort((a, b) => (b.r.score ?? -1) - (a.r.score ?? -1) || a.r.name.localeCompare(b.r.name));
   const list = document.getElementById("list");
@@ -426,16 +673,16 @@ function render(refit) {
     '<span><span class="nm">' + esc(r.name) + "</span>" +
     '<span class="meta">' + [r.category, HAT_NAMES[r.hats], r.price, r.suburb].filter(Boolean).map(esc).join(" · ") + "</span></span>" +
     '<span class="dist">' + (d != null ? fmtKm(d) : "") + "</span></button></li>").join("")
-    : '<li class="empty">No restaurants match these filters.</li>';
-  if (refit && shown.length && (st.q || n)) map.fitBounds(L.latLngBounds(shown.map(r => [r.lat, r.lon])), { ...fitPad(), maxZoom: 15 });
+    : '<li class="empty">' + (inView && shown.length ? "No restaurants in this part of the map. Zoom out or drag the list up to see all." : "No restaurants match these filters.") + "</li>";
 }
 document.getElementById("list").addEventListener("click", e => {
   const b = e.target.closest("button[data-id]"); if (!b) return;
   const o = byId.get(b.dataset.id); if (!o) return;
-  if (narrow()) panel.classList.add("collapsed");
-  cluster.zoomToShowLayer(o.m, () => { map.panTo(o.m.getLatLng()); o.m.openPopup(); });
+  if (narrow()) return openCard(o.r);
+  cluster.zoomToShowLayer(o.m, () => { map.panTo(o.m.getLatLng()); openPopup(o.r); });
 });
 render(false);
+placeLayout();
 </script>
 </body>
 </html>
